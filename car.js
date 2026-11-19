@@ -13,14 +13,15 @@
 const root = car.root, clamp = car.clamp, store = car.store;
 
 // Her değişiklikte bunu artır: sayfada üst çubukta görünür, güncellemenin geldiğini buradan anlarsın
-const VERSION = 'v3';
+const VERSION = 'v4';
 car.log('app.js ' + VERSION);
 
 // ================= AYARLAR =================
 const CFG = {
   maxAngle: 360,      // direksiyon sınırı (derece). 360 = 1 tur
   turnK: 0.8,         // tam direksiyonda iç tarafın ne kadar yavaşlayacağı (0..1). 1 = iç taraf durur
-  pivot: false,       // true: gaz 0 iken direksiyon aracı yerinde döndürür (tekerlekler ters yönde)
+  steerDir: -1,       // direksiyon yönü: 1 normal, -1 ters (sağa çevirince sola gidiyorsa çevir)
+  pivot: false,      // true: gaz 0 iken direksiyon aracı yerinde döndürür (tekerlekler ters yönde)
   autoCenter: true,   // direksiyon bırakılınca ortala
   autoZero: true,     // gaz / tekerlek çubukları bırakılınca sıfırla
   sendMs: 80          // komut aralığı (ms)
@@ -34,11 +35,12 @@ car.sendMs = CFG.sendMs;
 function control(s) {
   // Dış taraf gaz hızında gider, iç taraf direksiyon kadar yavaşlar. Tekerlek geri dönmez (sürüklenme yok).
   // Gaz 0 ise araba olduğu yerde kalır (yerinde dönmek için CFG.pivot = true).
-  const t = s.throttle, a = Math.abs(s.steer) * CFG.turnK;   // 0..turnK
+  const st = s.steer * CFG.steerDir;                          // yön ters çıkarsa CFG.steerDir'i çevir
+  const t = s.throttle, a = Math.abs(st) * CFG.turnK;         // 0..turnK
   let l = t, r = t;
-  if (s.steer > 0) r = t * (1 - a);       // sağa dönüş: sağ taraf yavaş, sol taraf hızlı
-  else if (s.steer < 0) l = t * (1 - a);  // sola dönüş: sol taraf yavaş
-  if (CFG.pivot && Math.abs(t) < 0.05) { l = s.steer; r = -s.steer; }
+  if (st > 0) r = t * (1 - a);       // sağa dönüş: sağ taraf yavaş, sol taraf hızlı
+  else if (st < 0) l = t * (1 - a);  // sola dönüş: sol taraf yavaş
+  if (CFG.pivot && Math.abs(t) < 0.05) { l = st; r = -st; }
   return { l: l * s.speed, r: r * s.speed };
 }
 
