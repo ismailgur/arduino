@@ -12,6 +12,10 @@
 'use strict';
 const root = car.root, clamp = car.clamp, store = car.store;
 
+// Her değişiklikte bunu artır: sayfada üst çubukta görünür, güncellemenin geldiğini buradan anlarsın
+const VERSION = 'v1';
+car.log('app.js ' + VERSION);
+
 // ================= AYARLAR =================
 const CFG = {
   maxAngle: 360,      // direksiyon sınırı (derece). 360 = 1 tur
