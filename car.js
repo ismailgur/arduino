@@ -13,13 +13,14 @@
 const root = car.root, clamp = car.clamp, store = car.store;
 
 // Her değişiklikte bunu artır: sayfada üst çubukta görünür, güncellemenin geldiğini buradan anlarsın
-const VERSION = 'v1';
+const VERSION = 'v3';
 car.log('app.js ' + VERSION);
 
 // ================= AYARLAR =================
 const CFG = {
   maxAngle: 360,      // direksiyon sınırı (derece). 360 = 1 tur
-  steerK: 0.6,        // direksiyonun sol/sağ fark etkisi
+  turnK: 0.8,         // tam direksiyonda iç tarafın ne kadar yavaşlayacağı (0..1). 1 = iç taraf durur
+  pivot: false,       // true: gaz 0 iken direksiyon aracı yerinde döndürür (tekerlekler ters yönde)
   autoCenter: true,   // direksiyon bırakılınca ortala
   autoZero: true,     // gaz / tekerlek çubukları bırakılınca sıfırla
   sendMs: 80          // komut aralığı (ms)
@@ -31,10 +32,14 @@ car.sendMs = CFG.sendMs;
 // Dönüş: { l, r }  sol ve sağ taraf (iki tekerlek aynı), -1..1
 //   veya { fl, fr, rl, rr }  her tekerlek ayrı
 function control(s) {
-  let l = s.throttle + s.steer * CFG.steerK;     // sağa dönüşte sol taraf hızlı
-  let r = s.throttle - s.steer * CFG.steerK;
-  const m = Math.max(1, Math.abs(l), Math.abs(r));
-  return { l: l / m * s.speed, r: r / m * s.speed };
+  // Dış taraf gaz hızında gider, iç taraf direksiyon kadar yavaşlar. Tekerlek geri dönmez (sürüklenme yok).
+  // Gaz 0 ise araba olduğu yerde kalır (yerinde dönmek için CFG.pivot = true).
+  const t = s.throttle, a = Math.abs(s.steer) * CFG.turnK;   // 0..turnK
+  let l = t, r = t;
+  if (s.steer > 0) r = t * (1 - a);       // sağa dönüş: sağ taraf yavaş, sol taraf hızlı
+  else if (s.steer < 0) l = t * (1 - a);  // sola dönüş: sol taraf yavaş
+  if (CFG.pivot && Math.abs(t) < 0.05) { l = s.steer; r = -s.steer; }
+  return { l: l * s.speed, r: r * s.speed };
 }
 
 // ================= TEKERLEK FONKSİYONLARI =================
@@ -84,6 +89,7 @@ const css = `
 #a{display:flex;flex-direction:column;height:100%;gap:8px;padding:8px;box-sizing:border-box}
 #a .tabs{display:flex;gap:6px}
 #a .tabs button{flex:1;padding:8px}
+#a .tabs .ver{align-self:center;color:#8b98a8;font-size:12px;padding:0 4px}
 #a .tabs button.on{background:#3ea6ff;color:#06121f;border-color:#3ea6ff;font-weight:700}
 #a section{flex:1;min-height:0;display:grid;gap:8px}
 #a section[hidden]{display:none}
@@ -118,7 +124,7 @@ document.head.appendChild(style);
 
 root.innerHTML = `
 <div id="a">
-  <div class="tabs"><button data-t="drive" class="on">Sürüş</button><button data-t="wheels">Tekerlekler</button></div>
+  <div class="tabs"><button data-t="drive" class="on">Sürüş</button><button data-t="wheels">Tekerlekler</button><span class="ver">${VERSION}</span></div>
 
   <section id="a-drive">
     <div class="panel wheelBox">
